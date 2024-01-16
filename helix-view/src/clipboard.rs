@@ -98,19 +98,26 @@ pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
 
 #[cfg(not(any(windows, target_os = "wasm32", target_os = "macos")))]
 pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
-    use crate::env::{binary_exists, env_var_is_set};
+    use crate::env::{binary_exists, env_var_is_eq, env_var_is_set};
+
     use provider::command::is_exit_success;
     // TODO: support for user-defined provider, probably when we have plugin support by setting a
     // variable?
 
-    if env_var_is_set("WAYLAND_DISPLAY") && binary_exists("wl-copy") && binary_exists("wl-paste") {
+    if env_var_is_set("WAYLAND_DISPLAY")
+        && binary_exists("wl-copy")
+        && binary_exists("wl-paste")
+        && !env_var_is_eq("XDG_SESSION_DESKTOP", "gnome")
+    {
         command_provider! {
             paste => "wl-paste", "--no-newline";
             copy => "wl-copy", "--type", "text/plain";
             primary_paste => "wl-paste", "-p", "--no-newline";
             primary_copy => "wl-copy", "-p", "--type", "text/plain";
         }
-    } else if env_var_is_set("DISPLAY") && binary_exists("xclip") {
+    } else if (env_var_is_set("DISPLAY") || env_var_is_eq("XDG_SESSION_DESKTOP", "gnome"))
+        && binary_exists("xclip")
+    {
         command_provider! {
             paste => "xclip", "-o", "-selection", "clipboard";
             copy => "xclip", "-i", "-selection", "clipboard";
